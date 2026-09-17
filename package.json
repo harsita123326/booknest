@@ -1,0 +1,23 @@
+{
+  "name": "booknest",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:api\" \"npm run dev:web\"",
+    "dev:web": "npm run dev -w @booknest/web",
+    "dev:api": "npm run start:dev -w @booknest/api",
+    "build": "npm run build -w @booknest/api && npm run build -w @booknest/web",
+    "lint": "npm run lint -w @booknest/api && npm run lint -w @booknest/web",
+    "test": "npm run test -w @booknest/api",
+    "prisma:generate": "npm run prisma:generate -w @booknest/api",
+    "prisma:migrate": "npm run prisma:migrate -w @booknest/api",
+    "prisma:seed": "npm run prisma:seed -w @booknest/api",
+    "format": "prettier --write \"apps/**/*.{ts,tsx,js,json}\" \"*.{json,md}\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "prettier": "^3.9.7"
+  }
+}
