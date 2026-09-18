@@ -1,0 +1,77 @@
+name: BookNest CI/CD
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  PROJECT_ID: booknest-509007
+  REGION: asia-south1
+  REPOSITORY: booknest-repo
+
+  API_IMAGE: asia-south1-docker.pkg.dev/booknest-509007/booknest-repo/bookstore-api
+  WEB_IMAGE: asia-south1-docker.pkg.dev/booknest-509007/booknest-repo/bookstore-web
+
+  API_SERVICE: booknest-api
+  WEB_SERVICE: booknest-web
+
+  API_URL: https://booknest-api-994891722286.asia-south1.run.app/api
+
+jobs:
+  deploy:
+    name: Build and Deploy BookNest
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Authenticate with Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker authentication
+        run: |
+          gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      - name: Build backend Docker image
+        run: |
+          docker build \
+            -t ${{ env.API_IMAGE }}:${{ github.sha }} \
+            -f apps/api/Dockerfile .
+
+      - name: Build frontend Docker image
+        run: |
+          docker build \
+            --build-arg NEXT_PUBLIC_API_URL=${{ env.API_URL }} \
+            -t ${{ env.WEB_IMAGE }}:${{ github.sha }} \
+            -f apps/web/Dockerfile .
+
+      - name: Push backend image
+        run: |
+          docker push ${{ env.API_IMAGE }}:${{ github.sha }}
+
+      - name: Push frontend image
+        run: |
+          docker push ${{ env.WEB_IMAGE }}:${{ github.sha }}
+
+      - name: Deploy backend to Cloud Run
+        run: |
+          gcloud run deploy ${{ env.API_SERVICE }} \
+            --image=${{ env.API_IMAGE }}:${{ github.sha }} \
+            --region=${{ env.REGION }} \
+            --platform=managed \
+            --quiet
+
+      - name: Deploy frontend to Cloud Run
+        run: |
+          gcloud run deploy ${{ env.WEB_SERVICE }} \
+            --image=${{ env.WEB_IMAGE }}:${{ github.sha }} \
+            --region=${{ env.REGION }} \
+            --platform=managed \
+            --quiet
